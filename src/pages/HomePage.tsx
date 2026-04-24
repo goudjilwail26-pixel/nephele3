@@ -5,6 +5,7 @@ import ProductGrid from '@/components/store/ProductGrid'
 import ProductFilters from '@/components/store/ProductFilters'
 import NewsletterSection from '@/components/store/NewsletterSection'
 import Marquee from '@/components/store/Marquee'
+import { SkeletonGrid } from '@/components/store/Skeleton'
 import type { Product, Category, Brand, ProductFilters as Filters } from '@/lib/types'
 
 export default function HomePage() {
@@ -91,9 +92,7 @@ export default function HomePage() {
       {/* Main Feed */}
       <section className="pb-20 px-4 sm:px-6 max-w-7xl mx-auto w-full">
         {loading ? (
-          <div className="text-center py-20 text-nephele-grey font-mono text-sm animate-pulse">
-            LOADING DROP...
-          </div>
+          <SkeletonGrid count={8} />
         ) : products.length > 0 ? (
           <ProductGrid products={products} columns={4} />
         ) : (
