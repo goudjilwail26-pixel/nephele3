@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Heart, ShoppingBag } from 'lucide-react'
+import { Heart } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/types'
@@ -11,7 +11,6 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const [wishlisted, setWishlisted] = useState(false)
-  const [isHovered, setIsHovered] = useState(false)
 
   const isSold = product.status === 'sold'
   const isReserved = product.status === 'reserved'
@@ -26,8 +25,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {/* Image */}
         <div 
           className="relative aspect-[3/4] overflow-hidden bg-nephele-border/10 mb-3 border border-nephele-border"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
         >
           {primaryImage ? (
             <>
@@ -37,7 +34,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 className={cn(
                   'absolute inset-0 w-full h-full object-cover transition-all duration-500',
                   hoverImage && hoverImage !== primaryImage ? "group-hover:opacity-0" : "",
-                  isHovered && "scale-110",
                   (isSold || isReserved) && 'opacity-60 scale-100 grayscale-[0.8]'
                 )}
               />
@@ -46,7 +42,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                   src={hoverImage}
                   alt={product.title}
                   className={cn(
-                    'absolute inset-0 w-full h-full object-cover opacity-0 transition-all duration-500 group-hover:opacity-100 group-hover:scale-110',
+                    'absolute inset-0 w-full h-full object-cover opacity-0 transition-all duration-500 group-hover:opacity-100',
                     (isSold || isReserved) && 'opacity-60 scale-100 grayscale-[0.8]'
                   )}
                 />
@@ -86,25 +82,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                   {product.size}
                 </span>
              </div>
-          )}
-
-          {/* Quick Add Button */}
-          {!isSold && !isReserved && (
-            <div className={cn(
-              "absolute bottom-2 left-2 z-10 transition-all duration-300",
-              isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
-            )}>
-              <button 
-                className="bg-nephele-white text-nephele-black font-mono text-[9px] tracking-widest uppercase px-3 py-2 hover:bg-nephele-silver transition-colors flex items-center gap-1.5"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                }}
-              >
-                <ShoppingBag size={12} />
-                Quick Add
-              </button>
-            </div>
           )}
         </div>
 
