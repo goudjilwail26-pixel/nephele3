@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
-import { Search, Heart, ShoppingBag, User, Menu, X, ChevronDown } from 'lucide-react'
+import { Search, ShoppingBag, Menu, X, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Category } from '@/lib/types'
 
@@ -10,7 +10,6 @@ export default function Header() {
   const [search, setSearch] = useState('')
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [categories, setCategories] = useState<Category[]>([])
   const [cartCount, setCartCount] = useState(0)
   const navigate = useNavigate()
   const searchRef = useRef<HTMLInputElement>(null)
@@ -104,7 +103,6 @@ export default function Header() {
                   </span>
                 )}
               </Link>
-              </Link>
             </div>
           </div>
         </div>
@@ -112,10 +110,7 @@ export default function Header() {
 
       {searchOpen && (
         <div className="fixed inset-0 z-[100] bg-black/80" onClick={() => setSearchOpen(false)}>
-          <div 
-            className="max-w-xl mx-auto mt-24 px-4"
-            onClick={e => e.stopPropagation()}
-          >
+          <div className="max-w-xl mx-auto mt-24 px-4" onClick={e => e.stopPropagation()}>
             <form onSubmit={handleSearch} className="flex items-center gap-3 bg-nephele-black border border-nephele-border p-4">
               <Search size={18} className="text-nephele-grey" />
               <input
