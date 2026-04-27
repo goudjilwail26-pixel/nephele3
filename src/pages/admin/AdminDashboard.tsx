@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { Package, CheckCircle, Clock, ShoppingCart, DollarSign, TrendingUp, TrendingDown, ArrowRight, BarChart3, Eye, Heart, Flame, MapPin, Star, Copy, AlertTriangle, Upload, RefreshCw } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Package, ShoppingCart, DollarSign, TrendingUp, ArrowUpRight, ArrowRight, Eye, Heart, BarChart3, AlertTriangle, Plus } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { formatPrice } from '@/lib/utils'
-import { ORDER_STATUSES, ALGERIA_WILAYAS } from '@/lib/types'
-import toast from 'react-hot-toast'
+import { ORDER_STATUSES } from '@/lib/types'
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ total: 0, available: 0, sold: 0 })
@@ -12,15 +11,10 @@ export default function AdminDashboard() {
   const [recent, setRecent] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({})
-  const [chartData, setChartData] = useState<{ date: string; orders: number, revenue: number }[]>([])
+  const [chartData, setChartData] = useState<{ date: string; orders: number }[]>([])
   const [monthStats, setMonthStats] = useState({ orders: 0, revenue: 0 })
   const [totalViews, setTotalViews] = useState(0)
-  const [totalFavorites, setTotalFavorites] = useState(0)
-  const [topProducts, setTopProducts] = useState<any[]>([])
-  const [aov, setAov] = useState(0)
-  const [topWilayas, setTopWilayas] = useState<{name: string, count: number}[]>([])
   const [lowStockCount, setLowStockCount] = useState(0)
-  const navigate = useNavigate()
 
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
@@ -34,400 +28,219 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function loadStats() {
-      const productCounts = await Promise.all([
-        supabase.from('products').select('*', { count: 'exact', head: true }),
-        supabase.from('products').select('*', { count: 'exact', head: true }).eq('status', 'available'),
-        supabase.from('products').select('*', { count: 'exact', head: true }).eq('status', 'sold'),
-        supabase.from('products').select('id, title, sku, price, status, created_at').order('created_at', { ascending: false }).limit(6),
+      const [products, orders, counts] = await Promise.all([
+        Promise.all([
+          supabase.from('products').select('*', { count: 'exact', head: true }),
+          supabase.from('products').select('*', { count: 'exact', head: true }).eq('status', 'available'),
+          supabase.from('products').select('id, title, sku, price, status, created_at').order('created_at', { ascending: false }).limit(5),
+        ]),
+        Promise.all([
+          supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', todayStart.toISOString()),
+          supabase.from('orders').select('total_price').gte('created_at', todayStart.toISOString()),
+          supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'Nouvelle Commande'),
+        ]),
+        Promise.all(ORDER_STATUSES.map(status => 
+          supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', status)
+        ))
       ])
-      
-      setStats({
-        total: productCounts[0].count || 0,
-        available: productCounts[1].count || 0,
-        sold: productCounts[2].count || 0
-      })
-      if (productCounts[3].data) setRecent(productCounts[3].data)
 
-      const orderCounts = await Promise.all([
-        supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', todayStart.toISOString()),
-        supabase.from('orders').select('total_price').gte('created_at', todayStart.toISOString()),
-        supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'Nouvelle Commande'),
-      ])
+      setStats({
+        total: products[0].count || 0,
+        available: products[1].count || 0,
+        sold: (products[0].count || 0) - (products[1].count || 0)
+      })
+      if (products[2].data) setRecent(products[2].data)
 
       setOrderStats({
-        today: orderCounts[0].count || 0,
-        revenue: orderCounts[1].data?.reduce((sum, o) => sum + (o.total_price || 0), 0) || 0,
-        pending: orderCounts[2].count || 0
+        today: orders[0].count || 0,
+        revenue: orders[1].data?.reduce((s, o) => s + (o.total_price || 0), 0) || 0,
+        pending: orders[2].count || 0
       })
 
-      const statusPromises = ORDER_STATUSES.map(status => 
-        supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', status)
-      )
-      const statusResults = await Promise.all(statusPromises)
-      const counts: Record<string, number> = {}
-      ORDER_STATUSES.forEach((status, idx) => {
-        counts[status] = statusResults[idx].count || 0
-      })
-      setStatusCounts(counts)
+      const sc: Record<string, number> = {}
+      ORDER_STATUSES.forEach((status, idx) => { sc[status] = counts[idx].count || 0 })
+      setStatusCounts(sc)
 
-      const last7Days: { date: string; orders: number; revenue: number }[] = []
+      const last7: { date: string; orders: number }[] = []
       for (let i = 6; i >= 0; i--) {
         const d = new Date()
         d.setDate(d.getDate() - i)
-        const dayStart = new Date(d)
-        dayStart.setHours(0, 0, 0, 0)
-        const dayEnd = new Date(d)
-        dayEnd.setHours(23, 59, 59, 999)
-        
-        const [dayOrders, dayRevenue] = await Promise.all([
-          supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', dayStart.toISOString()).lte('created_at', dayEnd.toISOString()),
-          supabase.from('orders').select('total_price').gte('created_at', dayStart.toISOString()).lte('created_at', dayEnd.toISOString())
-        ])
-        
-        last7Days.push({
-          date: d.toLocaleDateString('fr-DZ', { weekday: 'short' }),
-          orders: dayOrders.count || 0,
-          revenue: dayRevenue.data?.reduce((sum, o) => sum + (o.total_price || 0), 0) || 0
+        const dayStart = new Date(d); dayStart.setHours(0, 0, 0, 0)
+        const dayEnd = new Date(d); dayEnd.setHours(23, 59, 59, 999)
+        const result = await supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', dayStart.toISOString()).lte('created_at', dayEnd.toISOString())
+        last7.push({
+          date: d.toLocaleDateString('en', { weekday: 'short' }),
+          orders: result.count || 0
         })
       }
-      setChartData(last7Days)
+      setChartData(last7)
 
-      const monthOrders = await supabase.from('orders').select('total_price', { count: 'exact', head: true }).gte('created_at', getDateRange(30))
-      const monthRevenue = await supabase.from('orders').select('total_price').gte('created_at', getDateRange(30))
-      setMonthStats({
-        orders: monthOrders.count || 0,
-        revenue: monthRevenue.data?.reduce((sum, o) => sum + (o.total_price || 0), 0) || 0
-      })
+      const [monthO, monthR] = await Promise.all([
+        supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', getDateRange(30)),
+        supabase.from('orders').select('total_price').gte('created_at', getDateRange(30))
+      ])
+      setMonthStats({ orders: monthO.count || 0, revenue: monthR.data?.reduce((s, o) => s + (o.total_price || 0), 0) || 0 })
 
       const analytics = await supabase.from('products').select('views, favorites')
-      const views = analytics.data?.reduce((sum, p) => sum + (p.views || 0), 0) || 0
-      const favs = analytics.data?.reduce((sum, p) => sum + (p.favorites || 0), 0) || 0
-      setTotalViews(views)
-      setTotalFavorites(favs)
-
-      const topProductsData = await supabase
-        .from('orders')
-        .select('product_id, product_name, product_sku, quantity')
-        .gte('created_at', getDateRange(30))
-      
-      const productSales: Record<string, {name: string, sku: string, qty: number}> = {}
-      topProductsData.data?.forEach(o => {
-        if (o.product_id) {
-          if (!productSales[o.product_id]) {
-            productSales[o.product_id] = { name: o.product_name || '', sku: o.product_sku || '', qty: 0 }
-          }
-          productSales[o.product_id].qty += o.quantity || 1
-        }
-      })
-      const top5 = Object.entries(productSales)
-        .sort((a, b) => b[1].qty - a[1].qty)
-        .slice(0, 5)
-        .map(([id, data]) => ({ id, ...data }))
-      setTopProducts(top5)
-
-      const wilayaData = await supabase
-        .from('orders')
-        .select('wilaya')
-        .gte('created_at', getDateRange(30))
-      
-      const wilayaCounts: Record<string, number> = {}
-      wilayaData.data?.forEach(o => {
-        wilayaCounts[o.wilaya] = (wilayaCounts[o.wilaya] || 0) + 1
-      })
-      const topW = Object.entries(wilayaCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([name, count]) => ({ name, count }))
-      setTopWilayas(topW)
-
-      const allOrders = await supabase.from('orders').select('total_price').gte('created_at', getDateRange(30))
-      const totalRev = allOrders.data?.reduce((sum, o) => sum + (o.total_price || 0), 0) || 0
-      const totalCount = allOrders.data?.length || 1
-      setAov(totalRev / totalCount)
+      setTotalViews(analytics.data?.reduce((s, p) => s + (p.views || 0), 0) || 0)
 
       const lowStock = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('status', 'available')
       setLowStockCount(lowStock.count || 0)
-      
+
       setLoading(false)
     }
     loadStats()
   }, [])
 
-  if (loading) return <div className="animate-pulse text-nephele-grey font-mono text-sm py-10">Syncing database metrics...</div>
-
-  const maxChartOrders = Math.max(...chartData.map(d => d.orders), 1)
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-xs tracking-widest uppercase text-nephele-grey">Loading stats...</div>
+      </div>
+    )
+  }
 
   const statCards = [
-    { label: 'Total Scanned', value: stats.total, icon: Package, color: 'text-nephele-silver' },
-    { label: 'Live Available', value: stats.available, icon: CheckCircle, color: 'text-green-400' },
-    { label: 'Sold & Archived', value: stats.sold, icon: Package, color: 'text-nephele-grey' },
+    { label: "Today's Orders", value: orderStats.today, icon: ShoppingCart, color: 'text-yellow-400' },
+    { label: "Today's Revenue", value: formatPrice(orderStats.revenue), icon: DollarSign, color: 'text-green-400' },
+    { label: 'Pending', value: orderStats.pending, icon: AlertTriangle, color: 'text-orange-400' },
   ]
 
-  const orderCards = [
-    { label: "Commandes aujourd'hui", value: orderStats.today, icon: ShoppingCart, color: 'text-yellow-400' },
-    { label: "Revenus aujourd'hui", value: formatPrice(orderStats.revenue), icon: DollarSign, color: 'text-green-400' },
-    { label: 'En attente', value: orderStats.pending, icon: Clock, color: 'text-orange-400' },
+  const productCards = [
+    { label: 'Total Products', value: stats.total, icon: Package, color: 'text-nephele-white' },
+    { label: 'Available', value: stats.available, icon: Package, color: 'text-green-400' },
+    { label: 'Sold', value: stats.sold, icon: Package, color: 'text-nephele-grey' },
   ]
 
-  const analyticsCards = [
-    { label: 'Total Vues', value: totalViews, icon: Eye, color: 'text-blue-400' },
-    { label: 'Favoris', value: totalFavorites, icon: Heart, color: 'text-pink-400' },
-    { label: 'Panier Moyen', value: formatPrice(aov), icon: DollarSign, color: 'text-green-400' },
-  ]
+  const maxOrders = Math.max(...chartData.map(d => d.orders), 1)
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
       <div>
-        <p className="text-xs tracking-[0.3em] uppercase text-nephele-grey mb-1">Administrative Overview</p>
-        <h1 className="greek text-3xl font-light">Inventory Hub</h1>
+        <h1 className="text-2xl font-light">Dashboard</h1>
+        <p className="text-xs tracking-widest uppercase text-nephele-grey mt-1">Welcome back</p>
       </div>
 
-      {/* Order Stats */}
-      <div>
-        <h2 className="text-xs tracking-[0.2em] uppercase text-nephele-grey mb-4 flex items-center gap-2">
-          <ShoppingCart size={14} /> Commandes
-        </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          {orderCards.map((stat, idx) => (
-            <Link key={idx} to="/admin/orders" className="bg-nephele-dim border border-nephele-border p-5 rounded-sm hover:bg-nephele-dim/70 transition-colors">
-              <stat.icon className={`${stat.color} mb-4`} size={20} />
-              <p className="text-3xl font-light mb-1">{stat.value}</p>
-              <p className="text-[10px] tracking-[0.1em] text-nephele-grey uppercase">{stat.label}</p>
-            </Link>
-          ))}
-        </div>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((stat, idx) => (
+          <div key={idx} className="bg-[#111111] border border-nephele-border/50 p-4">
+            <stat.icon className={stat.color} size={18} />
+            <p className="text-2xl font-light mt-3">{stat.value}</p>
+            <p className="text-[10px] tracking-widest uppercase text-nephele-grey mt-1">{stat.label}</p>
+          </div>
+        ))}
       </div>
 
-      {/* 7-Day Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-nephele-dim border border-nephele-border p-5 rounded-sm">
-          <h2 className="text-xs tracking-[0.2em] uppercase text-nephele-grey mb-6 flex items-center gap-2">
-            <BarChart3 size={14} /> 7 derniers jours
-          </h2>
-          <div className="flex items-end justify-between gap-2 h-32">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {productCards.map((stat, idx) => (
+          <div key={idx} className="bg-[#111111] border border-nephele-border/50 p-4">
+            <stat.icon className={stat.color} size={18} />
+            <p className="text-2xl font-light mt-3">{stat.value}</p>
+            <p className="text-[10px] tracking-widest uppercase text-nephele-grey mt-1">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-[#111111] border border-nephele-border/50 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xs tracking-widest uppercase text-nephele-grey">Orders (7 days)</h2>
+            <span className="text-xs text-nephele-grey">{monthStats.orders} this month</span>
+          </div>
+          <div className="flex items-end gap-2 h-24">
             {chartData.map((day, idx) => (
               <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                <div className="w-full flex flex-col items-center gap-1">
-                  <span className="text-[10px] font-mono text-nephele-grey">{day.orders}</span>
+                <div className="w-full flex flex-col items-center">
+                  <span className="text-[10px] text-nephele-grey">{day.orders}</span>
                   <div 
-                    className="w-full bg-yellow-400/60 hover:bg-yellow-400 transition-colors rounded-t-sm"
-                    style={{ height: `${(day.orders / maxChartOrders) * 80}px`, minHeight: day.orders > 0 ? '4px' : 0 }}
+                    className="w-full bg-yellow-400/60 rounded-sm"
+                    style={{ height: `${(day.orders / maxOrders) * 60}px`, minHeight: day.orders > 0 ? '4px' : 0 }}
                   />
                 </div>
-                <span className="text-[10px] uppercase text-nephele-grey">{day.date}</span>
+                <span className="text-[9px] uppercase text-nephele-grey">{day.date}</span>
               </div>
             ))}
           </div>
-          <div className="mt-4 pt-4 border-t border-nephele-border flex justify-between items-center">
-            <div>
-              <p className="text-xs text-nephele-grey uppercase tracking-wider">Ce mois</p>
-              <p className="text-2xl font-light">{monthStats.orders} commandes</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-nephele-grey uppercase tracking-wider">Revenus 30j</p>
-              <p className="text-2xl font-light text-green-400">{formatPrice(monthStats.revenue)}</p>
-            </div>
-          </div>
         </div>
 
-        {/* Status Overview */}
-        <div className="bg-nephele-dim border border-nephele-border p-5 rounded-sm">
-          <h2 className="text-xs tracking-[0.2em] uppercase text-nephele-grey mb-4 flex items-center gap-2">
-            <Package size={14} /> Statut des commandes
-          </h2>
+        <div className="bg-[#111111] border border-nephele-border/50 p-5">
+          <h2 className="text-xs tracking-widest uppercase text-nephele-grey mb-4">Order Status</h2>
           <div className="space-y-2">
             {ORDER_STATUSES.map(status => (
               <Link 
                 key={status}
                 to={`/admin/orders?status=${encodeURIComponent(status)}`}
-                className="flex items-center justify-between p-3 border border-nephele-border hover:bg-nephele-black/50 transition-colors"
+                className="flex items-center justify-between p-2 hover:bg-nephele-dim/30 transition-colors"
               >
-                <span className="text-sm">{status}</span>
-                <span className={`text-xs px-2 py-1 ${
+                <span className="text-xs">{status}</span>
+                <span className={`text-xs px-2 py-0.5 ${
                   status === 'Nouvelle Commande' ? 'bg-yellow-400/10 text-yellow-400' :
-                  status === 'Confirmée' ? 'bg-blue-400/10 text-blue-400' :
-                  status === 'Préparation' ? 'bg-purple-400/10 text-purple-400' :
-                  status === 'Expédiée' ? 'bg-orange-400/10 text-orange-400' :
                   status === 'Livrée' ? 'bg-green-400/10 text-green-400' :
                   status === 'Annulée' ? 'bg-red-400/10 text-red-400' :
-                  'bg-pink-400/10 text-pink-400'
+                  'text-nephele-grey'
                 }`}>
                   {statusCounts[status] || 0}
                 </span>
               </Link>
             ))}
           </div>
-          <Link 
-            to="/admin/orders" 
-            className="mt-4 flex items-center justify-center gap-2 text-xs tracking-[0.2em] uppercase text-nephele-grey hover:text-nephele-white transition-colors"
-          >
-            Voir toutes les commandes <ArrowRight size={12} />
-          </Link>
         </div>
       </div>
 
-      {/* Product Stats */}
-      <div>
-        <h2 className="text-xs tracking-[0.2em] uppercase text-nephele-grey mb-4 flex items-center gap-2">
-          <Package size={14} /> Produits
-        </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          {statCards.map((stat, idx) => (
-            <div key={idx} className="bg-nephele-dim border border-nephele-border p-5 rounded-sm">
-              <stat.icon className={`${stat.color} mb-4`} size={20} />
-              <p className="text-3xl font-light mb-1">{stat.value}</p>
-              <p className="text-[10px] tracking-[0.1em] text-nephele-grey uppercase">{stat.label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Analytics */}
-      <div>
-        <h2 className="text-xs tracking-[0.2em] uppercase text-nephele-grey mb-4 flex items-center gap-2">
-          <Flame size={14} /> Analytics
-        </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          {analyticsCards.map((stat, idx) => (
-            <div key={idx} className="bg-nephele-dim border border-nephele-border p-5 rounded-sm">
-              <stat.icon className={`${stat.color} mb-4`} size={20} />
-              <p className="text-3xl font-light mb-1">{stat.value}</p>
-              <p className="text-[10px] tracking-[0.1em] text-nephele-grey uppercase">{stat.label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Top Products & Wilayas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-nephele-dim border border-nephele-border p-5 rounded-sm">
-          <h2 className="text-xs tracking-[0.2em] uppercase text-nephele-grey mb-4 flex items-center gap-2">
-            <Star size={14} /> Top selling (30j)
-          </h2>
-          <div className="space-y-2">
-            {topProducts.map((p, idx) => (
-              <div key={idx} className="flex items-center justify-between p-2 border border-nephele-border">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-mono text-nephele-grey w-4">{idx + 1}</span>
-                  <span className="text-sm">{p.name}</span>
-                </div>
-                <span className="text-xs text-nephele-grey">{p.qty} ventes</span>
-              </div>
-            ))}
-            {topProducts.length === 0 && (
-              <p className="text-sm text-nephele-grey">Aucune donnée</p>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-nephele-dim border border-nephele-border p-5 rounded-sm">
-          <h2 className="text-xs tracking-[0.2em] uppercase text-nephele-grey mb-4 flex items-center gap-2">
-            <MapPin size={14} /> Top wilayas (30j)
-          </h2>
-          <div className="space-y-2">
-            {topWilayas.map((w, idx) => (
-              <div key={idx} className="flex items-center justify-between p-2 border border-nephele-border">
-                <span className="text-sm">{w.name}</span>
-                <span className="text-xs text-nephele-grey">{w.count} commandes</span>
-              </div>
-            ))}
-            {topWilayas.length === 0 && (
-              <p className="text-sm text-nephele-grey">Aucune donnée</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex gap-4 flex-wrap">
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-3">
         <Link 
           to="/admin/products/new"
-          className="bg-nephele-white text-nephele-black px-6 py-3.5 text-xs tracking-[0.2em] uppercase hover:bg-nephele-silver transition-colors font-bold"
+          className="flex items-center gap-2 bg-nephele-white text-black px-4 py-2.5 text-xs tracking-widest uppercase font-bold hover:bg-nephele-silver transition-colors"
         >
-          + Draft New Piece
+          <Plus size={14} /> Add Product
         </Link>
         <Link 
           to="/admin/orders"
-          className="border border-nephele-border px-6 py-3.5 text-xs tracking-[0.2em] uppercase hover:bg-nephele-dim transition-colors"
+          className="flex items-center gap-2 border border-nephele-border px-4 py-2.5 text-xs tracking-widest uppercase hover:bg-nephele-dim/30 transition-colors"
         >
-          Voir les commandes
+          View Orders <ArrowRight size={14} />
         </Link>
         <Link 
           to="/admin/import"
-          className="border border-nephele-border px-6 py-3.5 text-xs tracking-[0.2em] uppercase hover:bg-nephele-dim transition-colors flex items-center gap-2"
+          className="flex items-center gap-2 border border-nephele-border px-4 py-2.5 text-xs tracking-widest uppercase hover:bg-nephele-dim/30 transition-colors"
         >
-          <Upload size={14} /> Importer CSV
+          Import CSV
         </Link>
       </div>
 
       {lowStockCount > 0 && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 rounded-sm">
+        <div className="flex items-center gap-3 px-4 py-3 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400">
           <AlertTriangle size={16} />
-          <span className="text-sm">{lowStockCount} produits en stock bas - pensez à racheter</span>
+          <span className="text-xs">{lowStockCount} products low on stock</span>
         </div>
       )}
 
-      {/* Recent Activity */}
+      {/* Recent Products */}
       <div>
-        <h2 className="text-xs tracking-[0.2em] uppercase text-nephele-grey mb-4 border-b border-nephele-border pb-2">Recent Catalog Additions</h2>
-        <div className="border border-nephele-border bg-nephele-black mt-4">
+        <h2 className="text-xs tracking-widest uppercase text-nephele-grey mb-4">Recent Products</h2>
+        <div className="border border-nephele-border/50">
           {recent.map((p, i) => (
-            <div key={p.id} className={`flex items-center justify-between px-5 py-4 text-sm ${i !== recent.length - 1 ? 'border-b border-nephele-border' : ''} hover:bg-nephele-dim transition-colors`}>
-              <div className="flex-1">
-                <Link to={`/admin/products/${p.id}`} className="font-light mb-1 hover:text-nephele-grey transition-colors block">{p.title}</Link>
-                <div className="flex items-center gap-3 text-[10px] uppercase font-mono text-nephele-grey">
-                  <span>{p.sku}</span>
-                  <span>|</span>
-                  <span>{formatPrice(p.price)}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={async () => {
-                      await supabase.from('products').update({ status: p.status === 'available' ? 'sold' : 'available' }).eq('id', p.id)
-                      toast.success('Statut mis à jour')
-                      window.location.reload()
-                    }}
-                    className="text-[10px] px-2 py-1 border border-green-400/30 text-green-400 hover:bg-green-400/10"
-                  >
-                    {p.status === 'available' ? 'Marquer vendu' : 'Remettre'}
-                  </button>
-                  <button
-                    onClick={async () => {
-                      const { data } = await supabase.from('products').select('*').eq('id', p.id).single()
-                      if (data) {
-                        delete data.id
-                        data.title = data.title + ' (copy)'
-                        data.sku = data.sku + '-copy'
-                        data.slug = data.slug + '-copy'
-                        const { error } = await supabase.from('products').insert(data)
-                        if (!error) {
-                          toast.success('Produit dupliqué')
-                          window.location.reload()
-                        }
-                      }
-                    }}
-                    className="text-[10px] px-2 py-1 border border-nephele-border text-nephele-grey hover:bg-nephele-dim"
-                  >
-                    <Copy size={10} />
-                  </button>
-                </div>
-                <span className={`tracking-widest uppercase text-[10px] px-2 py-1 border hidden sm:block ${
-                  p.status === 'available' ? 'text-green-400 border-green-400/20 bg-green-400/5' : 
-                  p.status === 'sold' ? 'text-nephele-grey border-nephele-grey/20 bg-nephele-dim' : 
-                  'text-yellow-400 border-yellow-400/20 bg-yellow-400/5'
+            <div 
+              key={p.id} 
+              className={`flex items-center justify-between px-4 py-3 ${i !== recent.length - 1 ? 'border-b border-nephele-border/30' : ''} hover:bg-nephele-dim/30 transition-colors`}
+            >
+              <Link to={`/admin/products/${p.id}`} className="text-xs hover:text-nephele-grey">
+                {p.title}
+              </Link>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-nephele-grey font-mono">{p.sku}</span>
+                <span className={`text-[9px] px-1.5 py-0.5 ${
+                  p.status === 'available' ? 'bg-green-400/10 text-green-400' : 
+                  'bg-nephele-dim text-nephele-grey'
                 }`}>
                   {p.status}
                 </span>
-                <Link to={`/admin/products/${p.id}`} className="text-[10px] tracking-widest uppercase text-nephele-grey hover:text-nephele-white px-3 py-1.5 border border-nephele-border">
-                  Edit
-                </Link>
               </div>
             </div>
           ))}
-          {recent.length === 0 && (
-            <div className="px-5 py-8 text-center text-xs text-nephele-grey font-mono">No items found in the database.</div>
-          )}
         </div>
       </div>
     </div>

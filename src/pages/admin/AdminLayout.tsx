@@ -1,68 +1,82 @@
-import { Outlet, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, Navigate, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { Package, Settings, LogOut, ArrowLeft, Menu, X, ShoppingCart, Search, Clock, Eye, CheckCircle, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Package, Settings, LogOut, ArrowLeft, Menu, X, ShoppingCart, Search, Wifi, RefreshCw, BarChart3, Users, Mail, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import toast from 'react-hot-toast';
 
 function AdminSidebar({ mobileOpen, setMobileOpen, onSearchOpen }: { mobileOpen: boolean, setMobileOpen: (v: boolean) => void, onSearchOpen: () => void }) {
-  const navigate = useNavigate();
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = '/admin/login';
   };
 
+  const navItems = [
+    { to: '/admin', icon: Package, label: 'Dashboard', exact: true },
+    { to: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
+    { to: '/admin/products/new', icon: Package, label: 'Add Product' },
+    { to: '/admin/import', icon: Mail, label: 'Import CSV' },
+  ]
+
   return (
     <>
-      {/* Mobile Drawer Overlay */}
       {mobileOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-black/60 md:hidden transition-opacity"
+          className="fixed inset-0 z-40 bg-black/60 md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
-      {/* Sidebar Content */}
       <aside className={cn(
-        "fixed md:static inset-y-0 left-0 z-50 w-64 border-r border-nephele-border bg-nephele-black flex flex-col transform transition-transform duration-300 md:translate-x-0",
+        "fixed md:static inset-y-0 left-0 z-50 w-56 border-r border-nephele-border bg-[#0a0a0a] flex flex-col transform transition-transform duration-300 md:translate-x-0",
         mobileOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="p-6 border-b border-nephele-border flex items-center justify-between md:block">
-          <div>
-            <Link to="/" className="text-xs text-nephele-grey hover:text-nephele-white mb-6 flex items-center gap-2 transition-colors">
-              <ArrowLeft size={14} /> Back to Store
-            </Link>
-            <h2 className="greek text-2xl font-light">Admin Hub</h2>
+        <div className="p-5 border-b border-nephele-border">
+          <Link to="/" className="flex items-center gap-2 text-xs text-nephele-grey hover:text-nephele-white mb-4 transition-colors">
+            <ArrowLeft size={12} /> Back to Store
+          </Link>
+          <div className="flex items-center gap-2">
+            <span className="text-xl">☁️</span>
+            <div>
+              <p className="text-xs tracking-widest uppercase text-nephele-grey">Admin</p>
+              <p className="text-sm font-light">Nephele</p>
+            </div>
           </div>
           <button 
-            className="md:hidden text-nephele-grey p-2"
+            className="md:hidden absolute top-5 right-5 text-nephele-grey p-1"
             onClick={() => setMobileOpen(false)}
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
         
-        <div className="flex-1 py-6 flex flex-col gap-2 px-4">
-          <div className="text-[10px] tracking-widest uppercase text-nephele-grey mb-2 px-2">Store Management</div>
-          <Link to="/admin" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 text-sm text-nephele-white hover:bg-nephele-dim transition-colors rounded-sm">
-            <Package size={16} className="text-nephele-grey" /> Products
-          </Link>
-          <Link to="/admin/orders" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 text-sm text-nephele-white hover:bg-nephele-dim transition-colors rounded-sm">
-            <ShoppingCart size={16} className="text-nephele-grey" /> Orders
-          </Link>
-          <Link to="/admin/settings" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 text-sm text-nephele-grey hover:bg-nephele-dim hover:text-nephele-white transition-colors rounded-sm">
-            <Settings size={16} /> Settings & Logs
-          </Link>
-        </div>
+        <nav className="flex-1 py-4 px-3 space-y-1">
+          {navItems.map((item) => (
+            <Link 
+              key={item.to}
+              to={item.to}
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 text-xs tracking-wider uppercase text-nephele-grey hover:text-nephele-white hover:bg-nephele-dim/30 transition-colors rounded-sm"
+            >
+              <item.icon size={14} />
+              {item.label}
+            </Link>
+          ))}
+        </nav>
 
-        <div className="p-4 border-t border-nephele-border">
-          <button onClick={onSearchOpen} className="flex items-center justify-between w-full px-3 py-2 text-sm text-nephele-grey hover:text-nephele-white hover:bg-nephele-dim transition-colors rounded-sm mb-2">
-            <span className="flex items-center gap-3"><Search size={16} /> Search</span>
-            <kbd className="text-[10px] bg-nephele-dim px-1.5 py-0.5">⌘K</kbd>
+        <div className="p-3 border-t border-nephele-border space-y-1">
+          <button 
+            onClick={onSearchOpen}
+            className="flex items-center justify-between w-full px-3 py-2.5 text-xs tracking-wider uppercase text-nephele-grey hover:text-nephele-white hover:bg-nephele-dim/30 transition-colors rounded-sm"
+          >
+            <span className="flex items-center gap-3"><Search size={14} /> Search</span>
+            <kbd className="text-[9px] bg-nephele-dim px-1.5">⌘K</kbd>
           </button>
-          <button onClick={handleLogout} className="flex items-center justify-between w-full px-3 py-2 text-sm text-nephele-grey hover:text-red-400 hover:bg-nephele-dim transition-colors rounded-sm">
-            Sign Out <LogOut size={16} />
+          <button 
+            onClick={handleLogout} 
+            className="flex items-center justify-between w-full px-3 py-2.5 text-xs tracking-wider uppercase text-nephele-grey hover:text-red-400 hover:bg-nephele-dim/30 transition-colors rounded-sm"
+          >
+            <span className="flex items-center gap-3"><LogOut size={14} /> Logout</span>
           </button>
         </div>
       </aside>
@@ -78,8 +92,7 @@ export default function AdminLayout() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{products: any[], orders: any[]}>({products: [], orders: []});
   const [searchLoading, setSearchLoading] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline'>('synced');
-  const navigate = useNavigate();
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing'>('synced');
 
   const handleGlobalSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
@@ -89,12 +102,9 @@ export default function AdminLayout() {
     setSearchLoading(true);
     const [products, orders] = await Promise.all([
       supabase.from('products').select('id, title, sku, price, status').ilike('title', `%${query}%`).limit(5),
-      supabase.from('orders').select('id, order_number, customer_first_name, phone, status').or(`order_number.ilike.%${query}%,phone.ilike.%${query}%,customer_first_name.ilike.%${query}%`).limit(5)
+      supabase.from('orders').select('id, order_number, customer_first_name, phone, status').or(`order_number.ilike.%${query}%,phone.ilike.%${query}%`).limit(5)
     ]);
-    setSearchResults({
-      products: products.data || [],
-      orders: orders.data || []
-    });
+    setSearchResults({ products: products.data || [], orders: orders.data || [] });
     setSearchLoading(false);
   }, []);
 
@@ -109,9 +119,7 @@ export default function AdminLayout() {
       setLoading(false);
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
@@ -143,7 +151,9 @@ export default function AdminLayout() {
   }, []);
 
   if (loading) {
-    return <div className="min-h-screen bg-nephele-black flex items-center justify-center font-mono text-xs text-nephele-grey">Verifying...</div>;
+    return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="text-xs tracking-widest uppercase text-nephele-grey">Loading...</div>
+    </div>;
   }
 
   if (!session) {
@@ -151,15 +161,15 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-nephele-black text-nephele-white overflow-hidden">
+    <div className="flex h-screen bg-[#0a0a0a] text-nephele-white overflow-hidden">
       <AdminSidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} onSearchOpen={() => setSearchOpen(true)} />
       <main className="flex-1 overflow-auto flex flex-col">
-        <header className="hidden md:flex items-center justify-between px-6 py-3 border-b border-nephele-border bg-nephele-black">
+        <header className="hidden md:flex items-center justify-between px-6 py-3 border-b border-nephele-border/50 bg-[#0a0a0a]">
           <button 
             onClick={() => setMobileOpen(true)}
-            className="text-nephele-white flex items-center gap-2 lg:hidden"
+            className="text-nephele-white lg:hidden"
           >
-            <Menu size={24} />
+            <Menu size={20} />
           </button>
           <div className="flex-1" />
           <div className="flex items-center gap-4">
@@ -168,101 +178,83 @@ export default function AdminLayout() {
               className="flex items-center gap-2 text-xs text-nephele-grey hover:text-nephele-white"
             >
               <Search size={14} />
-              <span className="hidden sm:inline">Rechercher</span>
-              <kbd className="text-[10px] bg-nephele-dim px-1.5 py-0.5">⌘K</kbd>
+              <kbd className="text-[9px] bg-nephele-dim px-1.5 py-0.5">⌘K</kbd>
             </button>
-            <div className={`flex items-center gap-1.5 text-xs ${
-              syncStatus === 'synced' ? 'text-green-400' : 
-              syncStatus === 'syncing' ? 'text-yellow-400' : 
-              'text-red-400'
-            }`}>
-              {syncStatus === 'synced' && <><Wifi size={12} /> Sync</>}
-              {syncStatus === 'syncing' && <><RefreshCw size={12} className="animate-spin" /> Sync</>}
-              {syncStatus === 'offline' && <><WifiOff size={12} /> Offline</>}
+            <div className={syncStatus === 'synced' ? 'text-green-400' : 'text-yellow-400'}>
+              {syncStatus === 'synced' ? <Wifi size={12} /> : <RefreshCw size={12} className="animate-spin" />}
             </div>
           </div>
         </header>
-        <header className="md:hidden flex items-center p-4 border-b border-nephele-border bg-nephele-black">
-          <button 
-            onClick={() => setMobileOpen(true)}
-            className="text-nephele-white flex items-center gap-2"
-          >
-            <Menu size={24} />
-            <span className="text-sm font-medium">Menu</span>
+        <header className="md:hidden flex items-center justify-between p-4 border-b border-nephele-border/50 bg-[#0a0a0a]">
+          <button onClick={() => setMobileOpen(true)} className="text-nephele-white">
+            <Menu size={20} />
           </button>
+          <span className="text-sm">☁️ Nephele Admin</span>
+          <div className="w-5" />
         </header>
-        <div className="p-4 sm:p-6 lg:p-8 flex-1">
+        <div className="flex-1 overflow-auto">
           <Outlet />
         </div>
       </main>
 
-      {/* Global Search Modal */}
       {searchOpen && (
-        <div className="fixed inset-0 z-[100] bg-black/80 flex items-start justify-center pt-[15vh]" onClick={() => setSearchOpen(false)}>
-          <div className="w-full max-w-xl bg-nephele-black border border-nephele-border" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 p-4 border-b border-nephele-border">
-              <Search size={18} className="text-nephele-grey" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Rechercher produits, commandes..."
-                className="flex-1 bg-transparent text-sm focus:outline-none"
-                autoFocus
-              />
-              <kbd className="text-[10px] bg-nephele-dim px-2 py-1">ESC</kbd>
-            </div>
-            <div className="max-h-[50vh] overflow-y-auto">
-              {searchLoading ? (
-                <div className="p-8 text-center text-nephele-grey text-sm">Recherche...</div>
-              ) : searchResults.products.length === 0 && searchResults.orders.length === 0 && searchQuery ? (
-                <div className="p-8 text-center text-nephele-grey text-sm">Aucun résultat</div>
-              ) : (
-                <>
-                  {searchResults.products.length > 0 && (
-                    <div className="p-2">
-                      <p className="text-[10px] tracking-widest uppercase text-nephele-grey px-3 py-2">Produits</p>
-                      {searchResults.products.map(p => (
-                        <Link 
-                          key={p.id}
-                          to={`/admin/products/${p.id}`}
-                          onClick={() => setSearchOpen(false)}
-                          className="flex items-center justify-between px-3 py-2 hover:bg-nephele-dim"
-                        >
-                          <div>
-                            <p className="text-sm font-light">{p.title}</p>
-                            <p className="text-xs text-nephele-grey font-mono">{p.sku}</p>
-                          </div>
-                          <span className={`text-[10px] px-2 py-1 ${p.status === 'available' ? 'text-green-400' : 'text-nephele-grey'}`}>{p.status}</span>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                  {searchResults.orders.length > 0 && (
-                    <div className="p-2 border-t border-nephele-border">
-                      <p className="text-[10px] tracking-widest uppercase text-nephele-grey px-3 py-2">Commandes</p>
-                      {searchResults.orders.map(o => (
-                        <Link 
-                          key={o.id}
-                          to={`/admin/orders?search=${o.order_number}`}
-                          onClick={() => setSearchOpen(false)}
-                          className="flex items-center justify-between px-3 py-2 hover:bg-nephele-dim"
-                        >
-                          <div>
-                            <p className="text-sm font-light">{o.customer_first_name}</p>
-                            <p className="text-xs text-nephele-grey font-mono">{o.phone}</p>
-                          </div>
-                          <span className="text-[10px] px-2 py-1 text-nephele-grey">{o.order_number}</span>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="p-3 border-t border-nephele-border flex items-center justify-between text-[10px] text-nephele-grey">
-              <span><kbd className="bg-nephele-dim px-1">↵</kbd> Select <kbd className="bg-nephele-dim px-1">↑↓</kbd> Navigate</span>
-              <span>Cmd+K to open</span>
+        <div className="fixed inset-0 z-[100] bg-black/80" onClick={() => setSearchOpen(false)}>
+          <div className="max-w-lg mx-auto mt-20 px-4" onClick={e => e.stopPropagation()}>
+            <div className="bg-[#0a0a0a] border border-nephele-border">
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-nephele-border/50">
+                <Search size={16} className="text-nephele-grey" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search products, orders..."
+                  className="flex-1 bg-transparent text-sm focus:outline-none"
+                  autoFocus
+                />
+                <kbd className="text-[9px] bg-nephele-dim px-1.5 py-0.5">ESC</kbd>
+              </div>
+              <div className="max-h-80 overflow-y-auto">
+                {searchLoading ? (
+                  <div className="p-6 text-center text-nephele-grey text-xs tracking-wider">Searching...</div>
+                ) : searchResults.products.length === 0 && searchResults.orders.length === 0 && searchQuery ? (
+                  <div className="p-6 text-center text-nephele-grey text-xs tracking-wider">No results found</div>
+                ) : (
+                  <>
+                    {searchResults.products.length > 0 && (
+                      <div className="p-2">
+                        <p className="text-[10px] tracking-widest uppercase text-nephele-grey px-2 py-1">Products</p>
+                        {searchResults.products.map(p => (
+                          <Link 
+                            key={p.id}
+                            to={`/admin/products/${p.id}`}
+                            onClick={() => setSearchOpen(false)}
+                            className="flex items-center justify-between px-2 py-2 hover:bg-nephele-dim/30"
+                          >
+                            <span className="text-xs">{p.title}</span>
+                            <span className="text-[10px] text-nephele-grey">{p.sku}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                    {searchResults.orders.length > 0 && (
+                      <div className="p-2 border-t border-nephele-border/30">
+                        <p className="text-[10px] tracking-widest uppercase text-nephele-grey px-2 py-1">Orders</p>
+                        {searchResults.orders.map(o => (
+                          <Link 
+                            key={o.id}
+                            to={`/admin/orders?search=${o.order_number}`}
+                            onClick={() => setSearchOpen(false)}
+                            className="flex items-center justify-between px-2 py-2 hover:bg-nephele-dim/30"
+                          >
+                            <span className="text-xs">{o.order_number}</span>
+                            <span className="text-[10px] text-nephele-grey">{o.customer_first_name}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
