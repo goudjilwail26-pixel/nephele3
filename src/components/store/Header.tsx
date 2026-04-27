@@ -94,13 +94,6 @@ export default function Header() {
               </button>
 
               <Link 
-                to="/wishlist"
-                className="text-nephele-white hover:text-nephele-grey transition-colors hidden sm:block"
-              >
-                <Heart size={18} />
-              </Link>
-
-              <Link 
                 to="/cart"
                 className="relative text-nephele-white hover:text-nephele-grey transition-colors"
               >
@@ -111,12 +104,6 @@ export default function Header() {
                   </span>
                 )}
               </Link>
-
-              <Link 
-                to="/account"
-                className="text-nephele-white hover:text-nephele-grey transition-colors hidden sm:block"
-              >
-                <User size={18} />
               </Link>
             </div>
           </div>
