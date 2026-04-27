@@ -224,6 +224,7 @@ export default function AdminProductForm() {
                 <input 
                   type="file" 
                   accept="image/*" 
+                  multiple
                   onChange={handleImageUpload} 
                   disabled={uploadingImage}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" 
@@ -236,21 +237,78 @@ export default function AdminProductForm() {
               <span className="text-xs text-nephele-grey font-mono">OR</span>
 
               {/* URL Fallback */}
-              <input 
-                type="url" 
-                name="cover_image" 
-                value={formData.cover_image} 
-                onChange={handleChange} 
-                className="flex-1 bg-nephele-black border border-nephele-border px-3 py-3 text-sm focus:outline-none focus:border-nephele-white font-mono text-xs w-full" 
-                placeholder="Paste an image URL directly..." 
-              />
+              <div className="flex gap-2">
+                <input 
+                  type="url" 
+                  name="cover_image" 
+                  value={formData.cover_image} 
+                  onChange={handleChange} 
+                  className="flex-1 bg-nephele-black border border-nephele-border px-3 py-3 text-sm focus:outline-none focus:border-nephele-white font-mono text-xs w-full" 
+                  placeholder="Paste image URL for cover..." 
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = prompt('Enter image URL to add to gallery:')
+                    if (url) {
+                      setFormData(prev => ({
+                        ...prev,
+                        cover_image: prev.cover_image || url,
+                        images: [...(prev.images || []), url]
+                      }))
+                    }
+                  }}
+                  className="px-3 py-2 border border-nephele-border text-xs uppercase hover:bg-nephele-dim"
+                >
+                  + Add
+                </button>
+              </div>
             </div>
 
-            {formData.cover_image && (
-              <div className="mt-4 p-2 border border-nephele-border bg-nephele-black inline-block">
-                 <img src={formData.cover_image} alt="Preview" className="h-48 w-auto object-cover" />
+            <div className="space-y-2 mt-4">
+              <label className="text-[10px] tracking-widest uppercase text-nephele-grey">Image Gallery ({formData.images?.length || 0} images)</label>
+              <div className="flex flex-wrap gap-2">
+                {formData.cover_image && (
+                  <div className="relative group">
+                    <img src={formData.cover_image} alt="Cover" className="h-24 w-24 object-cover border border-nephele-border" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newImages = (formData.images || []).filter(img => img !== formData.cover_image)
+                        setFormData(prev => ({
+                          ...prev,
+                          cover_image: newImages[0] || '',
+                          images: newImages
+                        }))
+                      }}
+                      className="absolute top-0 right-0 bg-red-500 text-white text-xs p-1 opacity-0 group-hover:opacity-100"
+                    >
+                      ✕
+                    </button>
+                    <span className="absolute bottom-0 left-0 bg-black text-white text-[8px] px-1">COVER</span>
+                  </div>
+                )}
+                {(formData.images || []).filter(img => img !== formData.cover_image).map((img, idx) => (
+                  <div key={idx} className="relative group">
+                    <img src={img} alt={`Image ${idx + 1}`} className="h-24 w-24 object-cover border border-nephele-border" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newImages = (formData.images || []).filter(i => i !== img)
+                        setFormData(prev => ({
+                          ...prev,
+                          images: newImages
+                        }))
+                      }}
+                      className="absolute top-0 right-0 bg-red-500 text-white text-xs p-1 opacity-0 group-hover:opacity-100"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
               </div>
-            )}
+              <p className="text-[10px] text-nephele-grey">Tip: Upload one image, then paste more URLs above to add to gallery</p>
+            </div>
           </div>
 
           <div className="space-y-2">
