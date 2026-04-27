@@ -27,7 +27,7 @@ export default function Header() {
 
           {/* Logo */}
           <Link to="/" className="absolute left-1/2 -translate-x-1/2 flex items-center hover:opacity-70 transition-opacity">
-            <img src="/cloud-logo.png" alt="Nephele" className="h-8 sm:h-10 object-contain" />
+            <img src="/cloud-logo.png" alt="Nephele" className="h-8 sm:h-10 object-contain brightness-0 invert" />
           </Link>
 
           {/* Actions */}
