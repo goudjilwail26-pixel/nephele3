@@ -16,6 +16,7 @@ import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminProductForm from './pages/admin/AdminProductForm';
+import AdminImport from './pages/admin/AdminImport';
 import { isSupabaseConfigured } from './lib/supabase/client';
 
 function StoreLayout() {
@@ -44,6 +45,7 @@ export default function App() {
           <Route index element={<AdminDashboard />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="products/:id" element={<AdminProductForm />} />
+          <Route path="import" element={<AdminImport />} />
         </Route>
         
         <Route element={<StoreLayout />}>

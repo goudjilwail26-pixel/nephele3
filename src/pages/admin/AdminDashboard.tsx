@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { Package, CheckCircle, Clock, ShoppingCart, DollarSign, TrendingUp, TrendingDown, ArrowRight, BarChart3, Eye, Heart, Flame } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Package, CheckCircle, Clock, ShoppingCart, DollarSign, TrendingUp, TrendingDown, ArrowRight, BarChart3, Eye, Heart, Flame, MapPin, Star, Copy, AlertTriangle, Upload, RefreshCw } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import { formatPrice } from '@/lib/utils'
-import { ORDER_STATUSES } from '@/lib/types'
+import { ORDER_STATUSES, ALGERIA_WILAYAS } from '@/lib/types'
+import toast from 'react-hot-toast'
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ total: 0, available: 0, sold: 0 })
@@ -11,10 +12,15 @@ export default function AdminDashboard() {
   const [recent, setRecent] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({})
-  const [chartData, setChartData] = useState<{ date: string; orders: number; revenue: number }[]>([])
+  const [chartData, setChartData] = useState<{ date: string; orders: number, revenue: number }[]>([])
   const [monthStats, setMonthStats] = useState({ orders: 0, revenue: 0 })
   const [totalViews, setTotalViews] = useState(0)
   const [totalFavorites, setTotalFavorites] = useState(0)
+  const [topProducts, setTopProducts] = useState<any[]>([])
+  const [aov, setAov] = useState(0)
+  const [topWilayas, setTopWilayas] = useState<{name: string, count: number}[]>([])
+  const [lowStockCount, setLowStockCount] = useState(0)
+  const navigate = useNavigate()
 
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
@@ -98,6 +104,49 @@ export default function AdminDashboard() {
       const favs = analytics.data?.reduce((sum, p) => sum + (p.favorites || 0), 0) || 0
       setTotalViews(views)
       setTotalFavorites(favs)
+
+      const topProductsData = await supabase
+        .from('orders')
+        .select('product_id, product_name, product_sku, quantity')
+        .gte('created_at', getDateRange(30))
+      
+      const productSales: Record<string, {name: string, sku: string, qty: number}> = {}
+      topProductsData.data?.forEach(o => {
+        if (o.product_id) {
+          if (!productSales[o.product_id]) {
+            productSales[o.product_id] = { name: o.product_name || '', sku: o.product_sku || '', qty: 0 }
+          }
+          productSales[o.product_id].qty += o.quantity || 1
+        }
+      })
+      const top5 = Object.entries(productSales)
+        .sort((a, b) => b[1].qty - a[1].qty)
+        .slice(0, 5)
+        .map(([id, data]) => ({ id, ...data }))
+      setTopProducts(top5)
+
+      const wilayaData = await supabase
+        .from('orders')
+        .select('wilaya')
+        .gte('created_at', getDateRange(30))
+      
+      const wilayaCounts: Record<string, number> = {}
+      wilayaData.data?.forEach(o => {
+        wilayaCounts[o.wilaya] = (wilayaCounts[o.wilaya] || 0) + 1
+      })
+      const topW = Object.entries(wilayaCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([name, count]) => ({ name, count }))
+      setTopWilayas(topW)
+
+      const allOrders = await supabase.from('orders').select('total_price').gte('created_at', getDateRange(30))
+      const totalRev = allOrders.data?.reduce((sum, o) => sum + (o.total_price || 0), 0) || 0
+      const totalCount = allOrders.data?.length || 1
+      setAov(totalRev / totalCount)
+
+      const lowStock = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('status', 'available')
+      setLowStockCount(lowStock.count || 0)
       
       setLoading(false)
     }
@@ -123,6 +172,7 @@ export default function AdminDashboard() {
   const analyticsCards = [
     { label: 'Total Vues', value: totalViews, icon: Eye, color: 'text-blue-400' },
     { label: 'Favoris', value: totalFavorites, icon: Heart, color: 'text-pink-400' },
+    { label: 'Panier Moyen', value: formatPrice(aov), icon: DollarSign, color: 'text-green-400' },
   ]
 
   return (
@@ -248,7 +298,47 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="flex gap-4">
+      {/* Top Products & Wilayas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-nephele-dim border border-nephele-border p-5 rounded-sm">
+          <h2 className="text-xs tracking-[0.2em] uppercase text-nephele-grey mb-4 flex items-center gap-2">
+            <Star size={14} /> Top selling (30j)
+          </h2>
+          <div className="space-y-2">
+            {topProducts.map((p, idx) => (
+              <div key={idx} className="flex items-center justify-between p-2 border border-nephele-border">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-mono text-nephele-grey w-4">{idx + 1}</span>
+                  <span className="text-sm">{p.name}</span>
+                </div>
+                <span className="text-xs text-nephele-grey">{p.qty} ventes</span>
+              </div>
+            ))}
+            {topProducts.length === 0 && (
+              <p className="text-sm text-nephele-grey">Aucune donnée</p>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-nephele-dim border border-nephele-border p-5 rounded-sm">
+          <h2 className="text-xs tracking-[0.2em] uppercase text-nephele-grey mb-4 flex items-center gap-2">
+            <MapPin size={14} /> Top wilayas (30j)
+          </h2>
+          <div className="space-y-2">
+            {topWilayas.map((w, idx) => (
+              <div key={idx} className="flex items-center justify-between p-2 border border-nephele-border">
+                <span className="text-sm">{w.name}</span>
+                <span className="text-xs text-nephele-grey">{w.count} commandes</span>
+              </div>
+            ))}
+            {topWilayas.length === 0 && (
+              <p className="text-sm text-nephele-grey">Aucune donnée</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-4 flex-wrap">
         <Link 
           to="/admin/products/new"
           className="bg-nephele-white text-nephele-black px-6 py-3.5 text-xs tracking-[0.2em] uppercase hover:bg-nephele-silver transition-colors font-bold"
@@ -261,7 +351,20 @@ export default function AdminDashboard() {
         >
           Voir les commandes
         </Link>
+        <Link 
+          to="/admin/import"
+          className="border border-nephele-border px-6 py-3.5 text-xs tracking-[0.2em] uppercase hover:bg-nephele-dim transition-colors flex items-center gap-2"
+        >
+          <Upload size={14} /> Importer CSV
+        </Link>
       </div>
+
+      {lowStockCount > 0 && (
+        <div className="flex items-center gap-2 px-4 py-3 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 rounded-sm">
+          <AlertTriangle size={16} />
+          <span className="text-sm">{lowStockCount} produits en stock bas - pensez à racheter</span>
+        </div>
+      )}
 
       {/* Recent Activity */}
       <div>
@@ -278,6 +381,37 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={async () => {
+                      await supabase.from('products').update({ status: p.status === 'available' ? 'sold' : 'available' }).eq('id', p.id)
+                      toast.success('Statut mis à jour')
+                      window.location.reload()
+                    }}
+                    className="text-[10px] px-2 py-1 border border-green-400/30 text-green-400 hover:bg-green-400/10"
+                  >
+                    {p.status === 'available' ? 'Marquer vendu' : 'Remettre'}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const { data } = await supabase.from('products').select('*').eq('id', p.id).single()
+                      if (data) {
+                        delete data.id
+                        data.title = data.title + ' (copy)'
+                        data.sku = data.sku + '-copy'
+                        data.slug = data.slug + '-copy'
+                        const { error } = await supabase.from('products').insert(data)
+                        if (!error) {
+                          toast.success('Produit dupliqué')
+                          window.location.reload()
+                        }
+                      }
+                    }}
+                    className="text-[10px] px-2 py-1 border border-nephele-border text-nephele-grey hover:bg-nephele-dim"
+                  >
+                    <Copy size={10} />
+                  </button>
+                </div>
                 <span className={`tracking-widest uppercase text-[10px] px-2 py-1 border hidden sm:block ${
                   p.status === 'available' ? 'text-green-400 border-green-400/20 bg-green-400/5' : 
                   p.status === 'sold' ? 'text-nephele-grey border-nephele-grey/20 bg-nephele-dim' : 
