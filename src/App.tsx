@@ -48,6 +48,8 @@ export default function App() {
         
         <Route element={<StoreLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/shop" element={<ShopPage />} />
+          <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/products/:slug" element={<ProductPage />} />
         </Route>
         

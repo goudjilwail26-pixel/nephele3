@@ -4,7 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { 
   Search, Filter, Eye, Phone, MessageCircle, Trash2, 
   Download, ChevronDown, X, Check, Clock, Package, 
-  Truck, AlertCircle, RotateCcw
+  Truck, AlertCircle, RotateCcw, CheckSquare, Square, History
 } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { ORDER_STATUSES, ALGERIA_WILAYAS, type Order, type OrderStatus } from '@/lib/types'
@@ -20,6 +20,10 @@ export default function AdminOrders() {
   const [dateFilter, setDateFilter] = useState<string>('')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [editStatus, setEditStatus] = useState<string>('')
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set())
+  const [bulkStatus, setBulkStatus] = useState<string>('')
+  const [showBulkActions, setShowBulkActions] = useState(false)
+  const [orderHistory, setOrderHistory] = useState<any[]>([])
 
   const getTodayStart = () => {
     const now = new Date()
@@ -126,6 +130,80 @@ export default function AdminOrders() {
     }
   }
 
+  async function quickStatusChange(orderId: string, newStatus: OrderStatus) {
+    const { error } = await supabase
+      .from('orders')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', orderId)
+
+    if (error) {
+      toast.error('Erreur lors de la mise à jour')
+    } else {
+      toast.success(`${newStatus}`)
+      loadOrders()
+    }
+  }
+
+  function toggleSelectOrder(orderId: string) {
+    const newSelected = new Set(selectedOrders)
+    if (newSelected.has(orderId)) {
+      newSelected.delete(orderId)
+    } else {
+      newSelected.add(orderId)
+    }
+    setSelectedOrders(newSelected)
+    setShowBulkActions(newSelected.size > 0)
+  }
+
+  function toggleSelectAll() {
+    if (selectedOrders.size === orders.length) {
+      setSelectedOrders(new Set())
+      setShowBulkActions(false)
+    } else {
+      setSelectedOrders(new Set(orders.map(o => o.id)))
+      setShowBulkActions(true)
+    }
+  }
+
+  async function bulkUpdateStatus() {
+    if (!bulkStatus || selectedOrders.size === 0) return
+
+    const { error } = await supabase
+      .from('orders')
+      .update({ status: bulkStatus, updated_at: new Date().toISOString() })
+      .in('id', Array.from(selectedOrders))
+
+    if (error) {
+      toast.error('Erreur lors de la mise à jour')
+    } else {
+      toast.success(`${selectedOrders.size} commandes mises à jour`)
+      setSelectedOrders(new Set())
+      setShowBulkActions(false)
+      setBulkStatus('')
+      loadOrders()
+    }
+  }
+
+  async function loadOrderHistory(orderId: string) {
+    const { data } = await supabase
+      .from('order_history')
+      .select('*')
+      .eq('order_id', orderId)
+      .order('created_at', { ascending: false })
+    setOrderHistory(data || [])
+  }
+
+  async function openOrderDetails(order: Order) {
+    setSelectedOrder(order)
+    setEditStatus(order.status)
+    const { data } = await supabase
+      .from('order_history')
+      .select('*')
+      .eq('order_id', order.id)
+      .order('created_at', { ascending: false })
+    setOrderHistory(data || [])
+  }
+
   function exportCSV() {
     const headers = ['Order #', 'Date', 'Client', 'Téléphone', 'Wilaya', 'Commune', 'Produit', 'Qté', 'Total', 'Statut']
     const rows = orders.map(o => [
@@ -185,6 +263,37 @@ export default function AdminOrders() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
+        {showBulkActions && (
+          <div className="w-full flex items-center gap-3 bg-yellow-400/10 border border-yellow-400/30 p-3">
+            <span className="text-sm">{selectedOrders.size} sélectionné(s)</span>
+            <select
+              value={bulkStatus}
+              onChange={e => setBulkStatus(e.target.value)}
+              className="bg-nephele-dim border border-nephele-border px-3 py-1.5 text-sm"
+            >
+              <option value="">Changer le statut...</option>
+              {ORDER_STATUSES.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <button
+              onClick={bulkUpdateStatus}
+              disabled={!bulkStatus}
+              className="bg-nephele-white text-nephele-black px-4 py-1.5 text-xs uppercase disabled:opacity-50"
+            >
+              Appliquer
+            </button>
+            <button
+              onClick={() => {
+                setSelectedOrders(new Set())
+                setShowBulkActions(false)
+              }}
+              className="text-nephele-grey hover:text-white"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-nephele-grey" size={14} />
           <input
@@ -270,6 +379,11 @@ export default function AdminOrders() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-nephele-border bg-nephele-dim">
+              <th className="text-left px-4 py-3">
+                <button onClick={toggleSelectAll} className="text-nephele-grey hover:text-white">
+                  {selectedOrders.size === orders.length && orders.length > 0 ? <CheckSquare size={14} /> : <Square size={14} />}
+                </button>
+              </th>
               <th className="text-left px-4 py-3 text-xs tracking-[0.1em] uppercase text-nephele-grey font-normal">Order #</th>
               <th className="text-left px-4 py-3 text-xs tracking-[0.1em] uppercase text-nephele-grey font-normal hidden md:table-cell">Date</th>
               <th className="text-left px-4 py-3 text-xs tracking-[0.1em] uppercase text-nephele-grey font-normal">Client</th>
@@ -284,6 +398,11 @@ export default function AdminOrders() {
           <tbody>
             {orders.map((order, idx) => (
               <tr key={order.id} className={`border-b border-nephele-border hover:bg-nephele-dim/50 transition-colors ${idx !== orders.length - 1 ? '' : ''}`}>
+                <td className="px-4 py-3">
+                  <button onClick={() => toggleSelectOrder(order.id)} className="text-nephele-grey hover:text-white">
+                    {selectedOrders.has(order.id) ? <CheckSquare size={14} /> : <Square size={14} />}
+                  </button>
+                </td>
                 <td className="px-4 py-3 font-mono text-xs">{order.order_number}</td>
                 <td className="px-4 py-3 text-nephele-grey hidden md:table-cell">
                   {new Date(order.created_at).toLocaleDateString('fr-DZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
@@ -303,6 +422,15 @@ export default function AdminOrders() {
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-1">
+                    <select
+                      value={order.status}
+                      onChange={e => quickStatusChange(order.id, e.target.value as OrderStatus)}
+                      className="bg-nephele-dim/50 border border-nephele-border/50 px-2 py-1 text-[10px] focus:outline-none cursor-pointer hover:bg-nephele-dim"
+                    >
+                      {ORDER_STATUSES.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
                     <button
                       onClick={() => {
                         setSelectedOrder(order)
@@ -408,6 +536,25 @@ export default function AdminOrders() {
                 <div>
                   <p className="text-xs tracking-[0.1em] uppercase text-nephele-grey mb-1">Notes</p>
                   <p className="text-sm text-nephele-grey">{selectedOrder.notes}</p>
+                </div>
+              )}
+
+              {orderHistory.length > 0 && (
+                <div>
+                  <p className="text-xs tracking-[0.1em] uppercase text-nephele-grey mb-3 flex items-center gap-2">
+                    <History size={14} /> Historique
+                  </p>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {orderHistory.map((h, idx) => (
+                      <div key={idx} className="flex items-center gap-3 text-xs">
+                        <div className="w-2 h-2 rounded-full bg-nephele-grey" />
+                        <span className="text-nephele-grey">{h.status}</span>
+                        <span className="text-nephele-grey ml-auto">
+                          {new Date(h.created_at).toLocaleString('fr-DZ', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

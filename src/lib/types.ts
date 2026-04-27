@@ -145,6 +145,8 @@ export interface Product {
   publish_at: string
   created_at: string
   updated_at: string
+  views?: number
+  favorites?: number
 }
 
 export interface ProductFilters {
