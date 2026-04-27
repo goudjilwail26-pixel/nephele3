@@ -358,13 +358,6 @@ export default function AdminDashboard() {
         </Link>
       </div>
 
-      {lowStockCount > 0 && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 rounded-sm">
-          <AlertTriangle size={16} />
-          <span className="text-sm">{lowStockCount} produits en stock bas - pensez à racheter</span>
-        </div>
-      )}
-
       {/* Recent Activity */}
       <div>
         <h2 className="text-xs tracking-[0.2em] uppercase text-nephele-grey mb-4 border-b border-nephele-border pb-2">Recent Catalog Additions</h2>

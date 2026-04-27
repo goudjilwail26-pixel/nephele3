@@ -134,9 +134,13 @@ export default function AdminLayout() {
     });
 
     const channel = supabase.channel('admin-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
         setSyncStatus('syncing');
         setTimeout(() => setSyncStatus('synced'), 1000);
+        
+        // New order notification
+        const order = payload.new as any;
+        notifyNewOrder(order);
       })
       .subscribe();
 
@@ -145,6 +149,19 @@ export default function AdminLayout() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Order notification function
+  const notifyNewOrder = async (order: any) => {
+    // Browser notification
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('New Order!', {
+        body: `${order.customer_first_name} - ${order.product_name} (${order.total_price} DA)`,
+        icon: '/favicon.ico'
+      });
+    } else if ('Notification' in window && Notification.permission !== 'denied') {
+      Notification.requestPermission();
+    }
+  }
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
