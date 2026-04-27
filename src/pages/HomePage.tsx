@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client'
 import ProductGrid from '@/components/store/ProductGrid'
 import ProductFilters from '@/components/store/ProductFilters'
-import NewsletterSection from '@/components/store/NewsletterSection'
-import Marquee from '@/components/store/Marquee'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { SkeletonGrid } from '@/components/store/Skeleton'
 import type { Product, Category, Brand, ProductFilters as Filters } from '@/lib/types'
 
 export default function HomePage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [showFilters, setShowFilters] = useState(false)
   
   const filters: Filters = {
     category: searchParams.get('category') || undefined,
@@ -23,6 +23,7 @@ export default function HomePage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [brands, setBrands] = useState<Brand[]>([])
   const [loading, setLoading] = useState(true)
+  const [totalCount, setTotalCount] = useState(0)
 
   useEffect(() => {
     async function getData() {
@@ -33,8 +34,8 @@ export default function HomePage() {
       try {
         let query = supabase
           .from('products')
-          .select('*, brand:brands(id, name, slug), category:categories(id, name, slug)')
-          .neq('status', 'draft')
+          .select('*, brand:brands(id, name, slug), category:categories(id, name, slug)', { count: 'exact' })
+          .eq('status', 'available')
 
         if (filters.category) query = query.eq('category.slug', filters.category)
         if (filters.brand) query = query.eq('brand.slug', filters.brand)
@@ -45,17 +46,16 @@ export default function HomePage() {
         else if (filters.sort === 'price_desc') query = query.order('price', { ascending: false })
         else query = query.order('created_at', { ascending: false })
 
-        const [
-          { data: prodData },
-          { data: catData },
-          { data: brandData }
-        ] = await Promise.all([
+        const [{ data: prodData, count }, { data: catData }, { data: brandData }] = await Promise.all([
           query.limit(48),
-          supabase.from('categories').select('*').eq('is_active', true),
+          supabase.from('categories').select('*').eq('is_active', true).order('display_order'),
           supabase.from('brands').select('*').eq('is_active', true)
         ])
 
-        if (prodData) setProducts(prodData as any)
+        if (prodData) {
+          setProducts(prodData as any)
+          setTotalCount(count || 0)
+        }
         if (catData) setCategories(catData)
         if (brandData) setBrands(brandData)
       } catch (e) {
@@ -67,44 +67,115 @@ export default function HomePage() {
     getData()
   }, [searchParams])
 
+  const hasActiveFilters = filters.category || filters.brand || filters.size || filters.search || filters.sort !== 'newest'
+
   return (
-    <div className="pt-16 min-h-screen flex flex-col">
-      <Marquee text="WELCOME • DELIVERY 58 WILLAYA" />
-      
-      {/* Feed Title */}
-      <section className="px-4 py-8 sm:px-6 max-w-7xl mx-auto w-full flex flex-col gap-6 border-b border-nephele-border mb-8">
-        <div className="flex items-end justify-between">
-          <div>
-            <p className="text-[10px] tracking-[0.4em] uppercase text-nephele-grey mb-1">Nephele</p>
-            <h1 className="greek text-3xl sm:text-5xl font-light uppercase tracking-wide">ΝΕΦΕΛΗ</h1>
+    <div className="min-h-screen">
+      {/* Hero Section - Minimal */}
+      <section className="pt-20 pb-8 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col items-center text-center py-8 sm:py-12">
+            <h1 className="text-4xl sm:text-6xl font-light tracking-wider mb-3">ΝΕΦΕΛΗ</h1>
+            <p className="text-xs tracking-[0.3em] uppercase text-nephele-grey mb-6">Curated Vintage & Luxury</p>
+            
+            {/* Quick Stats */}
+            <div className="flex items-center gap-8 text-xs text-nephele-grey">
+              <span>{totalCount} Pieces</span>
+              <span>•</span>
+              <span>58 Wilayas Delivery</span>
+              <span>•</span>
+              <span>COD Available</span>
+            </div>
           </div>
-          <p className="text-[10px] sm:text-xs font-mono uppercase text-nephele-grey hidden sm:block">
-            Explore {products.length > 0 ? products.length : ''} Curated Pieces
-          </p>
         </div>
-        <ProductFilters
+      </section>
+
+      {/* Filter Bar */}
+      <section className="sticky top-14 sm:top-16 z-40 bg-nephele-black/95 backdrop-blur-sm border-y border-nephele-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
+          <div className="flex items-center justify-between gap-4">
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 text-xs tracking-widest uppercase hover:text-nephele-white"
+            >
+              Filters
+              {hasActiveFilters && (
+                <span className="w-2 h-2 bg-nephele-white rounded-full" />
+              )}
+              {showFilters ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+
+            <div className="flex items-center gap-4">
+              <span className="text-xs text-nephele-grey hidden sm:block">
+                {totalCount} products
+              </span>
+              
+              <select
+                value={filters.sort || 'newest'}
+                onChange={e => {
+                  const params = new URLSearchParams(searchParams)
+                  params.set('sort', e.target.value)
+                  setSearchParams(params)
+                }}
+                className="bg-transparent text-xs tracking-wider uppercase border-none focus:outline-none cursor-pointer"
+              >
+                <option value="newest">Newest</option>
+                <option value="price_asc">Price: Low → High</option>
+                <option value="price_desc">Price: High → Low</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Filter Panel */}
+          {showFilters && (
+            <div className="pt-4 mt-4 border-t border-nephele-border">
+<ProductFilters
           categories={categories}
           brands={brands}
-          currentFilters={filters}
         />
+              {hasActiveFilters && (
+                <button
+                  onClick={() => setSearchParams(new URLSearchParams())}
+                  className="mt-4 text-xs text-nephele-grey hover:text-nephele-white"
+                >
+                  Clear all filters
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </section>
 
-      {/* Main Feed */}
-      <section className="pb-20 px-4 sm:px-6 max-w-7xl mx-auto w-full">
-        {loading ? (
-          <SkeletonGrid count={8} />
-        ) : products.length > 0 ? (
-          <ProductGrid products={products} columns={4} />
-        ) : (
-          <div className="text-center py-20 text-nephele-grey font-mono text-sm border border-dashed border-nephele-border">
-            NO PIECES FOUND.
-          </div>
-        )}
+      {/* Product Grid */}
+      <section className="px-4 sm:px-6 py-8">
+        <div className="max-w-7xl mx-auto">
+          {loading ? (
+            <SkeletonGrid count={8} />
+          ) : products.length > 0 ? (
+            <ProductGrid products={products} />
+          ) : (
+            <div className="text-center py-20 border border-dashed border-nephele-border">
+              <p className="text-nephele-grey mb-4">No products found</p>
+              {hasActiveFilters && (
+                <button
+                  onClick={() => setSearchParams(new URLSearchParams())}
+                  className="text-xs underline"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </section>
 
-      <div className="mt-auto">
-        <NewsletterSection />
-      </div>
+      {/* Footer CTA */}
+      <section className="px-4 py-12 border-t border-nephele-border">
+        <div className="max-w-7xl mx-auto text-center">
+          <p className="text-xs tracking-[0.2em] uppercase text-nephele-grey mb-2">Questions?</p>
+          <Link to="/contact" className="text-sm hover:underline">Contact Us</Link>
+        </div>
+      </section>
     </div>
   )
 }

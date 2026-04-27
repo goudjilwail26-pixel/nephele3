@@ -11,6 +11,7 @@ import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
 import CategoriesPage from './pages/CategoriesPage';
 import ProductPage from './pages/ProductPage';
+import CartPage from './pages/CartPage';
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="/shop" element={<ShopPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/products/:slug" element={<ProductPage />} />
+          <Route path="/cart" element={<CartPage />} />
         </Route>
         
         <Route path="*" element={<HomePage />} />

@@ -153,6 +153,8 @@ export interface ProductFilters {
   category?: string
   brand?: string
   size?: string
+  condition?: string
+  inStock?: string
   minPrice?: number
   maxPrice?: number
   status?: ProductStatus

@@ -86,7 +86,6 @@ export default function ShopPage() {
             <ProductFilters
               categories={categories}
               brands={brands}
-              currentFilters={filters}
             />
           </aside>
 
