@@ -1,13 +1,9 @@
 interface Props { href: string }
 
-const adminPhone = import.meta.env.VITE_WHATSAPP_NUMBER?.replace(/\+/g, '') || ''
-
 export default function WhatsAppButton({ href }: Props) {
-  const whatsAppHref = adminPhone ? `https://wa.me/${adminPhone}` : href
-  
   return (
     <a
-      href={whatsAppHref}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       className="flex items-center justify-center gap-2 w-full bg-nephele-white text-nephele-black py-3.5 text-xs tracking-[0.2em] uppercase hover:bg-nephele-silver transition-colors font-medium"
