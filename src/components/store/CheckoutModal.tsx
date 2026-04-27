@@ -127,6 +127,13 @@ export default function CheckoutModal({ product, isOpen, onClose }: Props) {
       })
       
       if (error) throw error
+
+      // Send WhatsApp notification to admin
+      const adminPhone = import.meta.env.VITE_WHATSAPP_NUMBER?.replace(/\+/g, '') || '213550000000'
+      const message = `🛍️ NOUVELLE COMMANDE #${orderNum}%0A%0A👤 ${formData.firstName} ${formData.lastName}%0A📱 ${formData.phone}%0A📍 ${formData.commune}, ${formData.wilaya}%0A%0A📦 ${product.title}%0A💰 ${formatPrice(totalPrice)}%0A💳 Payment: COD`
+      
+      // Open WhatsApp in new tab (silently)
+      window.open(`https://wa.me/${adminPhone}?text=${message}`, '_blank')
       
       setOrderNumber(orderNum)
       setSuccess(true)
