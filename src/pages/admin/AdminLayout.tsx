@@ -14,6 +14,7 @@ function AdminSidebar({ mobileOpen, setMobileOpen, onSearchOpen }: { mobileOpen:
   const navItems = [
     { to: '/admin', icon: BarChart3, label: 'Dashboard' },
     { to: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
+    { to: '/admin/products', icon: Package, label: 'Products' },
     { to: '/admin/products/new', icon: Package, label: 'Add Product' },
     { to: '/admin/import', icon: Download, label: 'Import CSV' },
   ]
@@ -48,18 +49,21 @@ function AdminSidebar({ mobileOpen, setMobileOpen, onSearchOpen }: { mobileOpen:
         
         <div className="flex-1 py-6 flex flex-col gap-2 px-4">
           <div className="text-[10px] tracking-widest uppercase text-nephele-grey mb-2 px-2">Store Management</div>
-          <Link to="/admin" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 text-sm text-nephele-white hover:bg-nephele-dim transition-colors rounded-sm">
-            <BarChart3 size={16} className="text-nephele-grey" /> Dashboard
-          </Link>
-          <Link to="/admin/orders" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 text-sm text-nephele-white hover:bg-nephele-dim transition-colors rounded-sm">
-            <ShoppingCart size={16} className="text-nephele-grey" /> Orders
-          </Link>
-          <Link to="/admin/products/new" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 text-sm text-nephele-white hover:bg-nephele-dim transition-colors rounded-sm">
-            <Package size={16} className="text-nephele-grey" /> Add Product
-          </Link>
-          <Link to="/admin/import" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 text-sm text-nephele-grey hover:bg-nephele-dim hover:text-nephele-white transition-colors rounded-sm">
-            <Download size={16} /> Import CSV
-          </Link>
+           <Link to="/admin" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 text-sm text-nephele-white hover:bg-nephele-dim transition-colors rounded-sm">
+             <BarChart3 size={16} className="text-nephele-grey" /> Dashboard
+           </Link>
+           <Link to="/admin/orders" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 text-sm text-nephele-white hover:bg-nephele-dim transition-colors rounded-sm">
+             <ShoppingCart size={16} className="text-nephele-grey" /> Orders
+           </Link>
+           <Link to="/admin/products" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 text-sm text-nephele-white hover:bg-nephele-dim transition-colors rounded-sm">
+             <Package size={16} className="text-nephele-grey" /> Products
+           </Link>
+           <Link to="/admin/products/new" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 text-sm text-nephele-white hover:bg-nephele-dim transition-colors rounded-sm">
+             <Package size={16} className="text-nephele-grey" /> Add Product
+           </Link>
+           <Link to="/admin/import" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 text-sm text-nephele-grey hover:bg-nephele-dim hover:text-nephele-white transition-colors rounded-sm">
+             <Download size={16} /> Import CSV
+           </Link>
           
           <div className="text-[10px] tracking-widest uppercase text-nephele-grey mb-2 px-2 mt-6">Analytics</div>
           <Link to="/admin/analytics" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 text-sm text-nephele-grey hover:bg-nephele-dim hover:text-nephele-white transition-colors rounded-sm">
