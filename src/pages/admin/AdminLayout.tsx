@@ -15,7 +15,6 @@ function AdminSidebar({ mobileOpen, setMobileOpen, onSearchOpen }: { mobileOpen:
     { to: '/admin', icon: BarChart3, label: 'Dashboard' },
     { to: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
     { to: '/admin/products', icon: Package, label: 'Products' },
-    { to: '/admin/products/new', icon: Package, label: 'Add Product' },
     { to: '/admin/import', icon: Download, label: 'Import CSV' },
   ]
 
@@ -57,9 +56,6 @@ function AdminSidebar({ mobileOpen, setMobileOpen, onSearchOpen }: { mobileOpen:
            </Link>
            <Link to="/admin/products" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 text-sm text-nephele-white hover:bg-nephele-dim transition-colors rounded-sm">
              <Package size={16} className="text-nephele-grey" /> Products
-           </Link>
-           <Link to="/admin/products/new" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 text-sm text-nephele-white hover:bg-nephele-dim transition-colors rounded-sm">
-             <Package size={16} className="text-nephele-grey" /> Add Product
            </Link>
            <Link to="/admin/import" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 text-sm text-nephele-grey hover:bg-nephele-dim hover:text-nephele-white transition-colors rounded-sm">
              <Download size={16} /> Import CSV
